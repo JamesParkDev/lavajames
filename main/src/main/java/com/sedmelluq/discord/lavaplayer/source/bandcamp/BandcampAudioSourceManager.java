@@ -40,7 +40,7 @@ import static com.sedmelluq.discord.lavaplayer.tools.FriendlyException.Severity.
 public class BandcampAudioSourceManager implements AudioSourceManager, HttpConfigurable {
   private static final String TRACK_URL_REGEX = "^https?://(?:[^.]+\\.|)bandcamp\\.com/track/([a-zA-Z0-9-_]+)/?(?:\\?.*|)$";
   private static final String ALBUM_URL_REGEX = "^https?://(?:[^.]+\\.|)bandcamp\\.com/album/([a-zA-Z0-9-_]+)/?(?:\\?.*|)$";
-
+  private static final String ARTWORK_URL_FORMAT = "https://f4.bcbits.com/img/a%s_9.jpg";
   private static final Pattern trackUrlPattern = Pattern.compile(TRACK_URL_REGEX);
   private static final Pattern albumUrlPattern = Pattern.compile(ALBUM_URL_REGEX);
 
@@ -73,28 +73,17 @@ public class BandcampAudioSourceManager implements AudioSourceManager, HttpConfi
       String bandUrl = readBandUrl(text);
       JsonBrowser trackListInfo = readTrackListInformation(text);
       String artist = trackListInfo.get("artist").text();
+      String artwork = extractArtwork(trackListInfo);
 
-      return extractTrack(trackListInfo.get("trackinfo").index(0), bandUrl, artist);
+      return extractTrack(trackListInfo.get("trackinfo").index(0), bandUrl, artist, artwork);
     });
   }
 
   private AudioItem loadAlbum(String albumUrl) {
-    return extractFromPage(albumUrl, (httpClient, text) -> {
-      String bandUrl = readBandUrl(text);
-      JsonBrowser trackListInfo = readTrackListInformation(text);
-      String artist = trackListInfo.get("artist").text();
-
-      List<AudioTrack> tracks = new ArrayList<>();
-      for (JsonBrowser trackInfo : trackListInfo.get("trackinfo").values()) {
-        tracks.add(extractTrack(trackInfo, bandUrl, artist));
-      }
-
-      JsonBrowser albumInfo = readAlbumInformation(text);
-      return new BasicAudioPlaylist(albumInfo.get("album_title").text(), tracks, null, false);
-    });
+    return extractFromPage(albumUrl, this::extract);
   }
 
-  private AudioTrack extractTrack(JsonBrowser trackInfo, String bandUrl, String artist) {
+  private AudioTrack extractTrack(JsonBrowser trackInfo, String bandUrl, String artist, String artwork) {
     String trackPageUrl = bandUrl + trackInfo.get("title_link").text();
 
     return new BandcampAudioTrack(new AudioTrackInfo(
@@ -103,7 +92,7 @@ public class BandcampAudioSourceManager implements AudioSourceManager, HttpConfi
         (long) (trackInfo.get("duration").as(Double.class) * 1000.0),
         bandUrl + trackInfo.get("title_link").text(),
         false,
-        trackPageUrl
+        trackPageUrl, artwork
     ), this);
   }
 
@@ -165,6 +154,21 @@ public class BandcampAudioSourceManager implements AudioSourceManager, HttpConfi
     return extractor.extract(httpInterface, responseText);
   }
 
+  private String extractArtwork(JsonBrowser root) {
+    String artId = root.get("art_id").text();
+    if (artId != null) {
+      if (artId.length() < 10) {
+        StringBuilder builder = new StringBuilder(artId);
+        while (builder.length() < 10) {
+          builder.insert(0, "0");
+        }
+        artId = builder.toString();
+      }
+      return String.format(ARTWORK_URL_FORMAT, artId);
+    }
+    return null;
+  }
+
   @Override
   public boolean isTrackEncodable(AudioTrack track) {
     return true;
@@ -200,6 +204,21 @@ public class BandcampAudioSourceManager implements AudioSourceManager, HttpConfi
   @Override
   public void configureBuilder(Consumer<HttpClientBuilder> configurator) {
     httpInterfaceManager.configureBuilder(configurator);
+  }
+
+  private AudioItem extract(HttpInterface httpClient, String text) {
+    String bandUrl = readBandUrl(text);
+    JsonBrowser trackListInfo = readTrackListInformation(text);
+    String artist = trackListInfo.get("artist").text();
+    String artworkUrl = extractArtwork(trackListInfo);
+
+    List<AudioTrack> tracks = new ArrayList<>();
+    for (JsonBrowser trackInfo : trackListInfo.get("trackinfo").values()) {
+      tracks.add(extractTrack(trackInfo, bandUrl, artist, artworkUrl));
+    }
+
+    JsonBrowser albumInfo = readAlbumInformation(text);
+    return new BasicAudioPlaylist(albumInfo.get("album_title").text(), tracks, null, false);
   }
 
   private interface AudioItemExtractor {

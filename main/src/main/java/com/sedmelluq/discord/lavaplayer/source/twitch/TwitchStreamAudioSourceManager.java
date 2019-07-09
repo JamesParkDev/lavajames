@@ -91,6 +91,7 @@ public class TwitchStreamAudioSourceManager implements AudioSourceManager, HttpC
       //The first one has the title of the broadcast
       JsonBrowser channelData = dataList.get(0);
       String status = channelData.get("title").text();
+      String logo = channelInfo.get("logo").text();
 
       return new TwitchStreamAudioTrack(new AudioTrackInfo(
           status,
@@ -98,7 +99,7 @@ public class TwitchStreamAudioSourceManager implements AudioSourceManager, HttpC
           Long.MAX_VALUE,
           reference.identifier,
           true,
-          reference.identifier
+          reference.identifier, logo
       ), this);
     }
   }

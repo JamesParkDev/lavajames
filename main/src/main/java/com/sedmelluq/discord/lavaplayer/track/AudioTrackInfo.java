@@ -28,6 +28,10 @@ public class AudioTrackInfo {
    * URL of the track, or local path to the file.
    */
   public final String uri;
+  /**
+   * Artwork URL of track
+   */
+  public final String artowrkUri;
 
   /**
    * @param title Track title
@@ -37,12 +41,13 @@ public class AudioTrackInfo {
    * @param isStream True if this track is a stream
    * @param uri URL of the track or path to its file.
    */
-  public AudioTrackInfo(String title, String author, long length, String identifier, boolean isStream, String uri) {
+  public AudioTrackInfo(String title, String author, long length, String identifier, boolean isStream, String uri, String artworkUrl) {
     this.title = title;
     this.author = author;
     this.length = length;
     this.identifier = identifier;
     this.isStream = isStream;
     this.uri = uri;
+    this.artowrkUri = artworkUrl;
   }
 }
