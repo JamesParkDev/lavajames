@@ -206,7 +206,7 @@ public class BandcampAudioSourceManager implements AudioSourceManager, HttpConfi
     httpInterfaceManager.configureBuilder(configurator);
   }
 
-  private AudioItem extract(HttpInterface httpClient, String text) {
+  private AudioItem extract(HttpInterface httpClient, String text) throws IOException {
     String bandUrl = readBandUrl(text);
     JsonBrowser trackListInfo = readTrackListInformation(text);
     String artist = trackListInfo.get("artist").text();
